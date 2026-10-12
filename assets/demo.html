@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图字择优 · 智能回答演示</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f5f5f7;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 28px;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+        .header p {
+            color: #86868b;
+            font-size: 14px;
+        }
+        .input-area {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 80px;
+            border: 1px solid #d2d2d7;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 15px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        textarea:focus { border-color: #0071e3; }
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            align-items: center;
+        }
+        button {
+            background: #0071e3;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 10px 24px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0077ed; }
+        button:disabled { background: #999; cursor: not-allowed; }
+        .status {
+            font-size: 13px;
+            color: #86868b;
+        }
+        .result-area {
+            display: none;
+        }
+        .result-area.show { display: block; }
+        .decision-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .badge-image { background: #e3f2fd; color: #1976d2; }
+        .badge-text { background: #f5f5f7; color: #86868b; }
+        .reason {
+            font-size: 13px;
+            color: #6e6e73;
+        }
+        .answer-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            margin-bottom: 16px;
+        }
+        .answer-card h3 {
+            font-size: 14px;
+            color: #86868b;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        .answer-text {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #1d1d1f;
+            white-space: pre-wrap;
+        }
+        .image-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .image-card h3 {
+            font-size: 14px;
+            color: #86868b;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        .image-card img {
+            width: 100%;
+            border-radius: 8px;
+            display: block;
+        }
+        .examples {
+            margin-top: 24px;
+        }
+        .examples h4 {
+            font-size: 13px;
+            color: #86868b;
+            margin-bottom: 10px;
+        }
+        .example-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .example-tag {
+            background: white;
+            border: 1px solid #d2d2d7;
+            border-radius: 16px;
+            padding: 6px 14px;
+            font-size: 13px;
+            color: #424245;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .example-tag:hover {
+            border-color: #0071e3;
+            color: #0071e3;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #86868b;
+        }
+        .loading.show { display: block; }
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f0f0f0;
+            border-top-color: #0071e3;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>图字择优 · 智能回答</h1>
+            <p>模型自主判断：什么时候用图，什么时候用字</p>
+        </div>
+
+        <div class="input-area">
+            <textarea id="questionInput" placeholder="输入你的问题，比如：出租屋15平怎么放床和衣柜？"></textarea>
+            <div class="btn-row">
+                <button id="askBtn" onclick="ask()">开始回答</button>
+                <span class="status" id="status"></span>
+            </div>
+            <div class="examples">
+                <h4>试试这些例子：</h4>
+                <div class="example-tags">
+                    <span class="example-tag" onclick="fillExample('出租屋15平怎么放床和衣柜？')">🏠 出租屋布局</span>
+                    <span class="example-tag" onclick="fillExample('番茄炒蛋怎么做？')">🍳 做菜步骤</span>
+                    <span class="example-tag" onclick="fillExample('iPhone 16 Pro、华为Mate 70、小米15 Ultra怎么选？')">📱 手机对比</span>
+                    <span class="example-tag" onclick="fillExample('为什么不建议年轻人裸辞？')">💭 否定观点</span>
+                    <span class="example-tag" onclick="fillExample('什么是递归？')">📚 概念解释</span>
+                    <span class="example-tag" onclick="fillExample('洗衣机内部结构是什么样的？')">🧺 结构拆解</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>正在判断输出形式并生成回答...</div>
+        </div>
+
+        <div class="result-area" id="resultArea">
+            <div class="decision-card" id="decisionCard">
+                <span class="badge" id="decisionBadge">判断中</span>
+                <span class="reason" id="decisionReason"></span>
+            </div>
+            <div class="answer-card">
+                <h3>文字回答</h3>
+                <div class="answer-text" id="answerText"></div>
+            </div>
+            <div class="image-card" id="imageCard" style="display:none;">
+                <h3>配套示意图 <span id="imageType" style="font-weight: normal; color:#aaa;"></span></h3>
+                <img id="resultImage" src="" alt="配图">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        function fillExample(text) {
+            document.getElementById('questionInput').value = text;
+        }
+
+        async function ask() {
+            const question = document.getElementById('questionInput').value.trim();
+            if (!question) {
+                alert('请输入问题');
+                return;
+            }
+
+            // 显示加载
+            document.getElementById('askBtn').disabled = true;
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('resultArea').classList.remove('show');
+            document.getElementById('status').textContent = '';
+
+            try {
+                const resp = await fetch(`${API_BASE}/api/answer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question })
+                });
+                const data = await resp.json();
+
+                // 显示判断结果
+                const badge = document.getElementById('decisionBadge');
+                if (data.need_image) {
+                    badge.className = 'badge badge-image';
+                    badge.textContent = '📊 配图回答';
+                } else {
+                    badge.className = 'badge badge-text';
+                    badge.textContent = '📝 纯文字回答';
+                }
+                document.getElementById('decisionReason').textContent = data.judge_reason || '';
+
+                // 显示文字答案
+                document.getElementById('answerText').textContent = data.answer_text || '（暂无答案）';
+
+                // 显示图片
+                const imageCard = document.getElementById('imageCard');
+                if (data.image_url) {
+                    imageCard.style.display = 'block';
+                    document.getElementById('resultImage').src = data.image_url;
+                    document.getElementById('imageType').textContent = data.image_type ? `· ${data.image_type}` : '';
+                } else {
+                    imageCard.style.display = 'none';
+                }
+
+                document.getElementById('resultArea').classList.add('show');
+            } catch (e) {
+                document.getElementById('status').textContent = '❌ 接口调用失败，请确认后端服务已启动';
+                console.error(e);
+            } finally {
+                document.getElementById('askBtn').disabled = false;
+                document.getElementById('loading').classList.remove('show');
+            }
+        }
+
+        // 回车提交
+        document.getElementById('questionInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) ask();
+        });
+    </script>
+</body>
+</html>
